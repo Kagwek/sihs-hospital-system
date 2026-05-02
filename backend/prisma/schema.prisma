@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String
+  email         String          @unique
+  role          Role
+  department    String
+  passwordHash  String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  appointments  Appointment[]   @relation("DoctorAppointments")
+  records       MedicalRecord[] @relation("RecordCreator")
+  prescriptions Prescription[]  @relation("DoctorPrescriptions")
+  refreshTokens RefreshToken[]
+}
+
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  patientId   String
+  doctorId    String
+  diagnosis   String
+  notes       String
+  createdAt   DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Patient {
+  id              String          @id @default(cuid())
+  name            String
+  dob             DateTime
+  gender          String
+  contact         String
+  nextOfKin       String
+  /// Legacy NHIF member number (pre-SHA transition); optional
+  nhifNumber      String?
+  /// Social Health Authority (UHC) member identifier
+  shaMemberNumber String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  appointments    Appointment[]
+  billings        Billing[]
+  labResults      LabResult[]
+  records         MedicalRecord[]
+  prescriptions   Prescription[]
+
+  @@unique([name, dob, contact], map: "patient_identity_unique")
+}
+
+model MedicalRecord {
+  id        String   @id @default(cuid())
+  patientId String
+  diagnosis String
+  notes     String
+  createdBy String
+  timestamp DateTime @default(now())
+  doctor    User     @relation("RecordCreator", fields: [createdBy], references: [id])
+  patient   Patient  @relation(fields: [patientId], references: [id])
+}
+
+model Appointment {
+  id                String   @id @default(cuid())
+  patientId         String
+  doctorId          String
+  department        String
+  status            String
+  datetime          DateTime
+  emergencyOverride Boolean  @default(false)
+  doctor            User     @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  patient           Patient  @relation(fields: [patientId], references: [id])
+
+  @@unique([doctorId, datetime], map: "doctor_double_booking")
+}
+
+model LabResult {
+  id              String    @id @default(cuid())
+  patientId       String
+  testType        String
+  result          String
+  status          String
+  flaggedCritical Boolean   @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  patient         Patient   @relation(fields: [patientId], references: [id])
+}
+
+model Prescription {
+  id           String  @id @default(cuid())
+  patientId    String
+  doctorId     String
+  medication   String
+  dosage       String
+  instructions String
+  doctor       User    @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  patient      Patient @relation(fields: [patientId], references: [id])
+}
+
+model Billing {
+  id                   String               @id @default(cuid())
+  patientId            String
+  service              String
+  amount               Decimal              @db.Decimal(10, 2)
+  status               String
+  /// Primary payor for this line (Kenya: CASH, NHIF, SHA, etc.)
+  payorType            InsurancePayor       @default(CASH)
+  /// NHIF claim / member reference when payor is NHIF
+  nhifNumber           String?
+  /// SHA (UHC) member or claim reference when payor is SHA
+  shaMemberNumber      String?
+  privateInsurerName   String?
+  policyNumber         String?
+  insuranceClaimStatus InsuranceClaimStatus @default(NOT_APPLICABLE)
+  /// KES amounts for reconciliation with insurer EDI / manual claims
+  patientCopayKes      Decimal?             @db.Decimal(12, 2)
+  insurerApprovedKes   Decimal?             @db.Decimal(12, 2)
+  claimNotes           String?
+  patient              Patient              @relation(fields: [patientId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  route     String
+  method    String
+  payload   Json?
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  LAB
+  PHARMACY
+  FINANCE
+}
+
+enum UrgencyLevel {
+  RED
+  AMBER
+  GREEN
+}
+
+enum InsurancePayor {
+  CASH
+  NHIF
+  SHA
+  PRIVATE
+  CORPORATE
+}
+
+enum InsuranceClaimStatus {
+  NOT_APPLICABLE
+  PENDING_VERIFICATION
+  SUBMITTED_TO_NHIF
+  SUBMITTED_TO_SHA
+  SUBMITTED_PRIVATE
+  APPROVED
+  PARTIALLY_APPROVED
+  REJECTED
+  SETTLED
+}

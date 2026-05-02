@@ -1,0 +1,67 @@
+// ...existing code...
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Chrome (legacy)",
+            "request": "launch",
+            "type": "chrome",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost (legacy)",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+
+        // Modern VS Code JS debug (pwa) Chrome
+        {
+            "type": "pwa-chrome",
+            "request": "launch",
+            "name": "Launch Chrome (pwa-chrome)",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+
+        // Attach to an already-running Chrome (must be started with remote debugging)
+        {
+            "type": "pwa-chrome",
+            "request": "attach",
+            "name": "Attach to Chrome (9222)",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}"
+        },
+
+        // Microsoft Edge (Chromium) using pwa-msedge
+        {
+            "type": "pwa-msedge",
+            "request": "launch",
+            "name": "Launch Edge",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+
+        // Start npm (run dev/start) in integrated terminal so the server runs under the debugger control
+        {
+            "type": "pwa-node",
+            "request": "launch",
+            "name": "Start npm",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ],
+
+    // Compound to run server then open browser
+    "compounds": [
+        {
+            "name": "Run: Start npm + Launch Chrome (pwa-chrome)",
+            "configurations": ["Start npm", "Launch Chrome (pwa-chrome)"]
+        }
+    ]
+}
+// ...existing code...
